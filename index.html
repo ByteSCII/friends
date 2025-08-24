@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cielo Nocturno</title>
+    <!-- Google Font para el mensaje final -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos generales para el cuerpo y la escena */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050a16;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .sky-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- ESTILOS DE LA LUNA --- */
+        .moon {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background-color: #f5f5dc;
+            border-radius: 50%;
+            top: 5%; 
+            left: 5%; 
+            transform: translate(0, 0);
+            box-shadow: 0 0 40px 10px rgba(255, 255, 255, 0.5),
+                        0 0 60px 20px rgba(255, 255, 255, 0.3);
+            animation: moonGlow 5s ease-in-out infinite alternate;
+            z-index: 10; /* La luna siempre estará encima de las nubes */
+        }
+
+        @keyframes moonGlow {
+            from {
+                box-shadow: 0 0 40px 10px rgba(255, 255, 255, 0.5),
+                            0 0 60px 20px rgba(255, 255, 255, 0.3);
+            }
+            to {
+                box-shadow: 0 0 50px 15px rgba(255, 255, 255, 0.7),
+                            0 0 80px 30px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        /* --- ESTILOS DE LAS ESTRELLAS PARPADEANTES --- */
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: #ffffff; /* Relleno blanco */
+            border-radius: 50%;
+            box-shadow: 0 0 2px 1px #ffd700; /* Borde dorado */
+            animation: twinkle 2s linear infinite;
+            z-index: -1; /* Mantiene las estrellas detrás de las nubes */
+        }
+
+        /* Animación de parpadeo de las estrellas */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        
+        /* Estilos base para las nubes, el movimiento se controla con JS */
+        .cloud {
+            position: absolute;
+            background: #fff;
+            border-radius: 100px;
+            opacity: 0.3; 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 5;
+        }
+
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+        }
+        
+        /* Variantes de nubes para diferentes tamaños */
+        .cloud-small {
+            width: 200px;
+            height: 60px;
+        }
+        .cloud-small::before { width: 80px; height: 80px; top: -40px; left: 20px; }
+        .cloud-small::after { width: 60px; height: 60px; top: -20px; right: 15px; }
+
+        .cloud-medium {
+            width: 250px;
+            height: 80px;
+        }
+        .cloud-medium::before { width: 100px; height: 100px; top: -50px; left: 30px; }
+        .cloud-medium::after { width: 80px; height: 80px; top: -30px; right: 20px; }
+
+        .cloud-large {
+            width: 300px;
+            height: 100px;
+        }
+        .cloud-large::before { width: 150px; height: 150px; top: -75px; left: 50px; }
+        .cloud-large::after { width: 120px; height: 120px; top: -40px; right: 40px; }
+
+        /* --- ESTILOS DEL SUELO --- */
+        .ground-container {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 20vh; /* Altura total de la capa de suelo */
+            z-index: 15;
+            box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .dirt-layer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 15vh; /* Altura de la capa de tierra */
+            background-color: #5C4033; /* Color marrón para la tierra */
+        }
+
+        .grass-layer {
+            position: absolute;
+            bottom: 15vh;
+            width: 100%;
+            height: 5vh;
+        }
+        
+        /* Estilos para el SVG del pasto */
+        .grass-layer svg {
+            position: absolute;
+            bottom: 0; /* Asegura que el SVG se alinee con la parte inferior de su contenedor */
+            width: 100%;
+            height: 100%;
+        }
+
+        .grass-blade {
+            fill: #006400;
+            opacity: 0.8;
+            transition: all 0.5s ease;
+        }
+
+        .grass-blade:hover {
+            fill: #008000;
+        }
+
+        /* --- ESTILOS DEL PERSONAJE --- */
+        .human, .static-human {
+            position: absolute;
+            bottom: 20vh; /* Posición inicial sobre el suelo */
+            width: 50px;
+            height: 100px;
+            z-index: 20;
+            transition: transform 0.2s ease, bottom 0.2s ease;
+        }
+        
+        .human.crouch {
+            height: 60px;
+            transition: height 0.2s ease, transform 0.2s ease;
+        }
+        
+        /* Estilos para la animación de vuelo */
+        .human.flying, .static-human.flying {
+            animation: fly-away 10s ease-in-out forwards;
+        }
+
+        @keyframes fly-away {
+            from {
+                bottom: 20vh;
+                transform: scale(1);
+            }
+            to {
+                bottom: 120vh;
+                transform: scale(0.1);
+            }
+        }
+
+        .head {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            left: 5px;
+            top: -20px;
+            z-index: 1;
+        }
+
+        /* Tonalidades de piel para los personajes */
+        .light-skin { background-color: #f0c9b4; }
+        .dark-skin { background-color: #331a00; }
+        
+        .eye {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: #000;
+            border-radius: 50%;
+            top: 15px;
+        }
+
+        .left-eye { left: 8px; }
+        .right-eye { right: 8px; }
+
+        .nose {
+            position: absolute;
+            width: 5px;
+            height: 8px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+        }
+
+        .mouth {
+            position: absolute;
+            width: 15px;
+            height: 5px;
+            background-color: #8b0000;
+            border-radius: 0 0 10px 10px;
+            left: 50%;
+            top: 28px;
+            transform: translateX(-50%);
+        }
+
+        /* Estilos del cuerpo y las extremidades normales */
+        .body {
+            position: absolute;
+            width: 50px;
+            height: 60px;
+            background-color: #ffffff; /* Color de una camisa genérica */
+            border-radius: 10px;
+        }
+        
+        .arm {
+            position: absolute;
+            width: 15px;
+            height: 40px;
+            border-radius: 5px;
+            top: 10px;
+            transform-origin: top;
+        }
+
+        .left-arm {
+            left: -10px;
+            transform: rotate(10deg);
+        }
+
+        .right-arm {
+            right: -10px;
+            transform: rotate(-10deg);
+        }
+        
+        .crouch .arm {
+            transform: rotate(0deg);
+        }
+        
+        /* Estilos para el estado de "manos agarradas" */
+        .human.holding-hands .right-arm {
+            transform: rotate(-50deg);
+            right: -20px;
+        }
+        .static-human.holding-hands .left-arm {
+            transform: rotate(50deg);
+            left: -20px;
+        }
+
+        .leg {
+            position: absolute;
+            width: 15px;
+            height: 40px;
+            background-color: #555555; /* Color de pantalones genéricos */
+            border-radius: 5px;
+            top: 55px;
+            transform-origin: top;
+        }
+        
+        /* Estilos de los zapatos */
+        .shoe {
+            position: absolute;
+            width: 20px;
+            height: 10px;
+            background-color: #000;
+            border-radius: 5px;
+            top: 35px; /* Se ajusta a la parte inferior de la pierna */
+        }
+        
+        .left-shoe { left: -2.5px; }
+        .right-shoe { right: -2.5px; }
+
+        .left-leg {
+            left: 10px;
+        }
+
+        .right-leg {
+            right: 10px;
+        }
+        
+        /* Animaciones de caminar */
+        .human.moving .left-leg { animation: walk-left 0.5s infinite; }
+        .human.moving .right-leg { animation: walk-right 0.5s infinite; }
+        .human.moving .left-arm { animation: walk-right 0.5s infinite; }
+        .human.moving .right-arm { animation: walk-left 0.5s infinite; }
+        
+        .human.crouch .leg {
+            height: 25px;
+            top: 35px;
+            transform: translateY(10px);
+        }
+
+        @keyframes walk-left {
+            0% { transform: rotate(15deg); }
+            50% { transform: rotate(-15deg); }
+            100% { transform: rotate(15deg); }
+        }
+
+        @keyframes walk-right {
+            0% { transform: rotate(-15deg); }
+            50% { transform: rotate(15deg); }
+            100% { transform: rotate(-15deg); }
+        }
+        
+        /* --- ESTILOS PARA LA PANTALLA DE INICIO/MODAL --- */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .modal-box {
+            background-color: #1a1a2e;
+            color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            font-family: sans-serif;
+        }
+
+        .modal-box h2 {
+            margin-top: 0;
+        }
+
+        .modal-box input {
+            padding: 10px;
+            border: 1px solid #c0392b;
+            border-radius: 5px;
+            background-color: #0f0f1a;
+            color: #ffffff;
+            margin: 10px 0;
+            font-size: 16px;
+            width: 80%;
+        }
+        
+        .modal-box button {
+            background-color: #c0392b;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .modal-box button:hover {
+            background-color: #e74c3c;
+        }
+
+        /* --- ESTILOS PARA LOS MENSAJES DE DIÁLOGO --- */
+        .message-box {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-family: sans-serif;
+            font-size: 14px; /* Aumenta el tamaño de la fuente */
+            max-width: 250px; /* Aumenta el ancho máximo */
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            bottom: 120px; /* Posición por encima del personaje */
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            white-space: pre-wrap;
+            z-index: 30;
+        }
+        
+        .message-box.show {
+            opacity: 1;
+        }
+
+        .message-box::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 10px 10px 0 10px;
+            border-color: rgba(255, 255, 255, 0.8) transparent transparent transparent;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        /* Mensaje final */
+        #finalMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Dancing Script', cursive;
+            font-size: 48px;
+            color: #ffd700; /* Dorado */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 1s ease-in;
+            z-index: 40;
+        }
+        #finalMessage.show {
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="sky-container">
+        <!-- Contenedor para la luna -->
+        <div class="moon"></div>
+        
+        <!-- Estrellas (distribuidas por todo el cielo) -->
+        <div class="star" style="top: 10%; left: 30%;"></div>
+        <div class="star" style="top: 25%; left: 60%;"></div>
+        <div class="star" style="top: 50%; left: 80%;"></div>
+        <div class="star" style="top: 70%; left: 10%;"></div>
+        <div class="star" style="top: 40%; left: 45%;"></div>
+        <div class="star" style="top: 5%; left: 50%;"></div>
+        <div class="star" style="top: 80%; left: 90%;"></div>
+        <div class="star" style="top: 30%; left: 75%;"></div>
+        <div class="star" style="top: 65%; left: 25%;"></div>
+        <div class="star" style="top: 55%; left: 5%;"></div>
+        <div class="star" style="top: 90%; left: 40%;"></div>
+        <div class="star" style="top: 85%; left: 70%;"></div>
+    </div>
+    
+    <!-- Contenedor del suelo con capas de tierra y pasto -->
+    <div class="ground-container">
+        <div class="dirt-layer"></div>
+        <div class="grass-layer">
+            <svg viewBox="0 0 100 5" preserveAspectRatio="none">
+                <!-- Briznas de pasto con forma de óvalo para un aspecto más orgánico -->
+                <path class="grass-blade" d="M0,5 Q10,2.5 20,5 Z" />
+                <path class="grass-blade" d="M5,5 Q15,1 25,5 Z" />
+                <path class="grass-blade" d="M10,5 Q20,4 30,5 Z" />
+                <path class="grass-blade" d="M15,5 Q25,2 35,5 Z" />
+                <path class="grass-blade" d="M20,5 Q30,3 40,5 Z" />
+                <path class="grass-blade" d="M25,5 Q35,1.5 45,5 Z" />
+                <path class="grass-blade" d="M30,5 Q40,4 50,5 Z" />
+                <path class="grass-blade" d="M35,5 Q45,2.5 55,5 Z" />
+                <path class="grass-blade" d="M40,5 Q50,1 60,5 Z" />
+                <path class="grass-blade" d="M45,5 Q55,3 65,5 Z" />
+                <path class="grass-blade" d="M50,5 Q60,2 70,5 Z" />
+                <path class="grass-blade" d="M55,5 Q65,4 75,5 Z" />
+                <path class="grass-blade" d="M60,5 Q70,1.5 80,5 Z" />
+                <path class="grass-blade" d="M65,5 Q75,3 85,5 Z" />
+                <path class="grass-blade" d="M70,5 Q80,2 90,5 Z" />
+                <path class="grass-blade" d="M75,5 Q85,4 95,5 Z" />
+                <path class="grass-blade" d="M80,5 Q90,2.5 100,5 Z" />
+                <path class="grass-blade" d="M85,5 Q95,1 105,5 Z" />
+                <path class="grass-blade" d="M90,5 Q100,3 110,5 Z" />
+            </svg>
+        </div>
+    </div>
+    
+    <!-- El personaje humano principal, controlado por el usuario -->
+    <div class="human" id="human" style="left: 10%;">
+        <div class="head light-skin">
+            <div class="eye left-eye"></div>
+            <div class="eye right-eye"></div>
+            <div class="nose light-skin"></div>
+            <div class="mouth"></div>
+        </div>
+        <div class="body"></div>
+        <div class="arm left-arm light-skin"></div>
+        <div class="arm right-arm light-skin"></div>
+        <div class="leg left-leg">
+            <div class="shoe left-shoe"></div>
+        </div>
+        <div class="leg right-leg">
+            <div class="shoe right-shoe"></div>
+        </div>
+        <!-- Mensaje de pensamiento del personaje principal -->
+        <div class="message-box" id="humanMessage"></div>
+    </div>
+    
+    <!-- Nuevo personaje estático, con piel oscura -->
+    <div class="static-human" id="staticHuman" style="left: 80%;">
+        <div class="head dark-skin">
+            <div class="eye left-eye"></div>
+            <div class="eye right-eye"></div>
+            <div class="nose dark-skin"></div>
+            <div class="mouth"></div>
+        </div>
+        <div class="body"></div>
+        <div class="arm left-arm dark-skin"></div>
+        <div class="arm right-arm dark-skin"></div>
+        <div class="leg left-leg">
+            <div class="shoe left-shoe"></div>
+        </div>
+        <div class="leg right-leg">
+            <div class="shoe right-shoe"></div>
+        </div>
+        <!-- Mensaje de diálogo del personaje estático -->
+        <div class="message-box" id="staticHumanMessage"></div>
+    </div>
+    
+    <!-- Mensaje final de la obra -->
+    <div id="finalMessage">Gracias por existir para mi</div>
+
+    <!-- Modal para ingresar el nombre -->
+    <div class="modal-overlay" id="nameModal">
+        <div class="modal-box">
+            <h2>Ingresa tu nombre para comenzar la historia</h2>
+            <input type="text" id="nameInput" placeholder="Tu nombre...">
+            <button id="startButton">Comenzar</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const skyContainer = document.querySelector('.sky-container');
+            const clouds = [];
+            const cloudClasses = ['cloud-small', 'cloud-medium', 'cloud-large'];
+            const maxClouds = 5;
+            const cloudCreationInterval = 5000;
+            let lastCloudCreationTime = 0;
+            
+            // Función para crear una nueva nube con propiedades aleatorias
+            function createCloud() {
+                const cloudDiv = document.createElement('div');
+                cloudDiv.classList.add('cloud', cloudClasses[Math.floor(Math.random() * cloudClasses.length)]);
+                
+                // Posición inicial aleatoria fuera de la pantalla a la izquierda
+                const startLeft = - (window.innerWidth * 0.5 + Math.random() * 200);
+                cloudDiv.style.left = `${startLeft}px`;
+
+                // Posición vertical más alta y variada
+                cloudDiv.style.top = `${5 + Math.random() * 20}%`;
+                
+                // Velocidad de movimiento aleatoria
+                const speed = 0.2 + Math.random() * 0.3;
+                cloudDiv.dataset.speed = speed;
+                
+                skyContainer.appendChild(cloudDiv);
+                clouds.push(cloudDiv);
+            }
+            
+            // Función para animar el movimiento de las nubes
+            function animateClouds(timestamp) {
+                // Elimina las nubes que ya no son visibles
+                for (let i = clouds.length - 1; i >= 0; i--) {
+                    const cloud = clouds[i];
+                    const speed = parseFloat(cloud.dataset.speed);
+                    const currentLeft = parseFloat(cloud.style.left);
+                    
+                    // Mueve la nube a la derecha
+                    cloud.style.left = `${currentLeft + speed}px`;
+                    
+                    // Si la nube está fuera de la pantalla, la elimina
+                    if (currentLeft > window.innerWidth) {
+                        cloud.remove();
+                        clouds.splice(i, 1);
+                    }
+                }
+
+                // Crea una nueva nube si hay menos que el máximo permitido
+                if (clouds.length < maxClouds && (timestamp - lastCloudCreationTime > cloudCreationInterval || lastCloudCreationTime === 0)) {
+                    createCloud();
+                    lastCloudCreationTime = timestamp;
+                }
+
+                requestAnimationFrame(animateClouds);
+            }
+            
+            // Crea las primeras nubes al inicio para que no inicie el cielo vacío
+            for (let i = 0; i < maxClouds; i++) {
+                createCloud();
+            }
+
+            // Inicia la animación de las nubes
+            animateClouds();
+
+            // --- Lógica del personaje humano ---
+            const human = document.getElementById('human');
+            const staticHuman = document.getElementById('staticHuman');
+            const humanMessage = document.getElementById('humanMessage');
+            const staticHumanMessage = document.getElementById('staticHumanMessage');
+            const finalMessage = document.getElementById('finalMessage');
+            const groundHeight = window.innerHeight * 0.2; // 20vh
+            const movementSpeed = 1.5; // Velocidad de movimiento reducida
+            const targetPosition = parseFloat(getComputedStyle(staticHuman).left);
+
+            let playerName = '';
+            let isWalkingToJean = false;
+            
+            // Lógica para el modal de inicio
+            const nameModal = document.getElementById('nameModal');
+            const nameInput = document.getElementById('nameInput');
+            const startButton = document.getElementById('startButton');
+
+            startButton.addEventListener('click', () => {
+                playerName = nameInput.value.trim() || 'amigo';
+                nameModal.style.display = 'none';
+                isWalkingToJean = true;
+                animateHuman();
+                
+                // Muestra el mensaje de pensamiento del personaje principal
+                setTimeout(() => {
+                    humanMessage.textContent = `Camina hasta ${playerName}. Camina hasta Jean para saludarlo.`;
+                    humanMessage.classList.add('show');
+                }, 500);
+            });
+            
+            function animateHuman() {
+                let currentLeft = parseFloat(getComputedStyle(human).left);
+
+                if (isWalkingToJean) {
+                    human.classList.add('moving');
+                    const distance = targetPosition - currentLeft;
+
+                    if (distance > 10) {
+                        human.style.left = `${currentLeft + movementSpeed}px`;
+                        requestAnimationFrame(animateHuman);
+                    } else {
+                        // El personaje ha llegado a Jean
+                        human.classList.remove('moving');
+                        isWalkingToJean = false;
+                        humanMessage.classList.remove('show');
+                        
+                        startDialogue();
+                    }
+                }
+            }
+
+            function startDialogue() {
+                // Muestra el mensaje de Jean
+                staticHumanMessage.textContent = `Hola ${playerName}, solo quería darte las gracias por ser mi amigo en todo este tiempo, siempre me ha sido difícil tener amigos y tú siempre estás para mí. I love bro.`;
+                staticHumanMessage.classList.add('show');
+                
+                // Después de un tiempo, iniciar la animación de vuelo
+                setTimeout(() => {
+                    staticHumanMessage.classList.remove('show');
+                    startFlying();
+                }, 5000); // Muestra el mensaje durante 5 segundos
+            }
+            
+            function startFlying() {
+                human.classList.add('holding-hands');
+                staticHuman.classList.add('holding-hands');
+                human.classList.add('flying');
+                staticHuman.classList.add('flying');
+                finalMessage.classList.add('show');
+            }
+            
+        });
+    </script>
+</body>
+</html>
